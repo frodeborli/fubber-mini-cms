@@ -235,6 +235,8 @@ window.CMS = {
     ai: {
         init: ai.init,
         send: ai.send,
+        checkStatus: ai.checkStatus,
+        resumeStream: ai.resumeStream,
         newConversation: ai.newConversation,
         pickImage: ai.pickImage,
         pickColor: ai.pickColor,

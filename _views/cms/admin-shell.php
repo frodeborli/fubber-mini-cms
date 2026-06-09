@@ -869,5 +869,13 @@
     </script>
 <?php endif; ?>
     <script src="/admin/dist/cms.min.js"></script>
+    <script>
+    CMS.ai.checkStatus().then(function(processing) {
+        if (!processing) return;
+        CMS.openDrawer('ai-assistant', 'AI Assistant');
+        CMS.ai.init(<?= \mini\h(json_encode($currentPath)) ?>);
+        CMS.ai.resumeStream();
+    });
+    </script>
 </body>
 </html>

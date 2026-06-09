@@ -49,6 +49,31 @@ export function init(page) {
     loadHistory();
 }
 
+export function checkStatus() {
+    return fetch('/admin/api/ai/status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) { return data.processing === true; })
+        .catch(function() { return false; });
+}
+
+export function resumeStream() {
+    if (streaming) return;
+    var els = getElements();
+    if (!els.messages) return;
+
+    setStreamingUI(true);
+    streamState = {
+        div: appendMessage('assistant', '<span class="ai-streaming-indicator"></span>'),
+        currentMsgId: null,
+        contentBuffer: '',
+        toolBuffer: [],
+        lastToolUses: {},
+        streamPos: 0,
+        retries: 0
+    };
+    connectStream();
+}
+
 function loadHistory() {
     var els = getElements();
     if (!els.messages) return;
@@ -129,6 +154,7 @@ export function send() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: html, page: currentPage })
     }).then(function(response) {
+        if (response.status === 409) throw new Error('Agent is already working');
         if (!response.ok) throw new Error('HTTP ' + response.status);
         return response.json();
     }).then(function() {

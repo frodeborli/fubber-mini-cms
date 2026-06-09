@@ -22,6 +22,10 @@ if ($prompt === '') {
 }
 
 $agent = \mini\Mini::$mini->get(AgentInterface::class);
+
+if ($agent->isProcessing()) {
+    return new JsonResponse(['error' => 'Agent is already processing a request'], [], 409);
+}
 $content = \mini\Mini::$mini->get(Content::class);
 
 $contextBlock = buildContext($agent, $content, $page);
