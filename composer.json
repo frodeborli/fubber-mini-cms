@@ -1,0 +1,25 @@
+{
+    "name": "fubber/mini-cms",
+    "description": "Template-first CMS aspect for fubber/mini — inline editing, media library, auto CRUD, and admin panel",
+    "type": "mini-aspect",
+    "license": "MIT",
+    "homepage": "https://github.com/frodeborli/mini-cms",
+    "authors": [
+        {
+            "name": "Frode Borli",
+            "email": "frode@borli.net"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "fubber/mini": "^0.17.0"
+    },
+    "autoload": {
+        "files": [
+            "_bootstrap.php"
+        ],
+        "psr-4": {
+            "MiniCms\\": "src/"
+        }
+    }
+}
