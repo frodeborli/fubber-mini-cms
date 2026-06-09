@@ -441,10 +441,11 @@
         .ai-msg-tool-error {
             border-left-color: #f8d7da;
         }
-        .tool-result-icon {
+        .tool-status-icon {
             font-size: 0.7rem;
+            color: #28a745;
         }
-        .ai-msg-tool-error .tool-result-icon {
+        .ai-msg-tool-error .tool-status-icon {
             color: #dc3545;
         }
         .ai-msg-error {

@@ -258,20 +258,13 @@ function handleStreamMessage(msg) {
         for (var i = 0; i < msg.message.content.length; i++) {
             var block = msg.message.content[i];
             if (block.type === 'tool_result' && block.tool_use_id) {
-                var toolUse = streamState.lastToolUses[block.tool_use_id];
-                var label = toolUse ? (toolUse.name || 'tool') : 'tool';
-                var summary = toolResultSummary(block, toolUse);
-                var cls = 'ai-msg-tool';
-                if (block.is_error) cls += ' ai-msg-tool-error';
-                var el = document.createElement('div');
-                el.className = cls;
-                el.innerHTML = '<span class="tool-result-icon">' + (block.is_error ? '&#10007;' : '&#10003;') + '</span> '
-                    + '<span class="tool-name">' + escapeHtml(label) + '</span>'
-                    + (summary ? ' <span style="color:#888">' + escapeHtml(summary) + '</span>' : '');
-                var msgs = getElements().messages;
-                if (msgs) {
-                    msgs.appendChild(el);
-                    msgs.scrollTop = msgs.scrollHeight;
+                var existing = document.querySelector('[data-tool-id="' + block.tool_use_id + '"]');
+                if (existing) {
+                    var icon = existing.querySelector('.tool-status-icon');
+                    if (icon) {
+                        icon.innerHTML = block.is_error ? '&#10007;' : '&#10003;';
+                    }
+                    if (block.is_error) existing.classList.add('ai-msg-tool-error');
                 }
             }
         }
@@ -289,17 +282,6 @@ function finalizeCurrentDiv() {
     if (!streamState.div.innerHTML.trim()) streamState.div.remove();
 }
 
-function toolResultSummary(block, toolUse) {
-    if (toolUse && toolUse.input) {
-        if (toolUse.input.file_path) return toolUse.input.file_path;
-        if (toolUse.input.command) {
-            var cmd = toolUse.input.command;
-            return cmd.length > 60 ? cmd.substring(0, 60) + '…' : cmd;
-        }
-    }
-    if (block.is_error) return 'error';
-    return '';
-}
 
 function renderAssistant() {
     if (!streamState || !streamState.div) return;
@@ -364,7 +346,10 @@ function renderToolUse(block) {
                 : block.input.command;
         }
     }
-    return '<div class="ai-msg-tool"><span class="tool-name">' + escapeHtml(name) + '</span>'
+    var idAttr = block.id ? ' data-tool-id="' + escapeHtml(block.id) + '"' : '';
+    return '<div class="ai-msg-tool"' + idAttr + '>'
+        + '<span class="tool-status-icon"><i class="bi bi-hourglass-split"></i></span> '
+        + '<span class="tool-name">' + escapeHtml(name) + '</span>'
         + (summary ? ' <span style="color:#888">' + escapeHtml(summary) + '</span>' : '')
         + '</div>';
 }
