@@ -155,6 +155,19 @@
         /* Hide tab label in active drawer (title shown in h6 instead) */
         .cms-drawer.active .cms-drawer-tab { display: none; }
 
+        @media (max-width: 767.98px) {
+            #drawer-container {
+                right: 0;
+            }
+            .cms-drawer.active,
+            .cms-drawer.active.drawer-wide {
+                width: 100%;
+            }
+            .cms-drawer.collapsed {
+                display: none;
+            }
+        }
+
         /* -- Component editor styles -- */
         .cms-field-group { margin-bottom: 1rem; }
         .cms-field-group-title {
