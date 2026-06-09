@@ -116,8 +116,10 @@ export function send() {
 
     streamState = {
         div: appendMessage('assistant', '<span class="ai-streaming-indicator"></span>'),
+        currentMsgId: null,
         contentBuffer: '',
         toolBuffer: [],
+        lastToolUses: {},
         streamPos: 0,
         retries: 0
     };
@@ -197,6 +199,18 @@ function handleStreamMessage(msg) {
     if (!streamState) return;
 
     if (msg.type === 'assistant' && msg.message && msg.message.content) {
+        var msgId = msg.message.id;
+
+        if (msgId && msgId !== streamState.currentMsgId) {
+            if (streamState.currentMsgId) {
+                finalizeCurrentDiv();
+                streamState.div = appendMessage('assistant', '<span class="ai-streaming-indicator"></span>');
+            }
+            streamState.currentMsgId = msgId;
+            streamState.contentBuffer = '';
+            streamState.toolBuffer = [];
+        }
+
         var content = msg.message.content;
         streamState.contentBuffer = '';
         streamState.toolBuffer = [];
@@ -207,15 +221,58 @@ function handleStreamMessage(msg) {
                 streamState.contentBuffer += block.text;
             } else if (block.type === 'tool_use') {
                 streamState.toolBuffer.push(block);
+                streamState.lastToolUses[block.id] = block;
             }
         }
 
         renderAssistant();
     }
 
+    if (msg.type === 'user' && msg.message && msg.message.content) {
+        for (var i = 0; i < msg.message.content.length; i++) {
+            var block = msg.message.content[i];
+            if (block.type === 'tool_result' && block.tool_use_id) {
+                var toolUse = streamState.lastToolUses[block.tool_use_id];
+                var label = toolUse ? (toolUse.name || 'tool') : 'tool';
+                var summary = toolResultSummary(block, toolUse);
+                var cls = 'ai-msg-tool';
+                if (block.is_error) cls += ' ai-msg-tool-error';
+                var el = document.createElement('div');
+                el.className = cls;
+                el.innerHTML = '<span class="tool-result-icon">' + (block.is_error ? '&#10007;' : '&#10003;') + '</span> '
+                    + '<span class="tool-name">' + escapeHtml(label) + '</span>'
+                    + (summary ? ' <span style="color:#888">' + escapeHtml(summary) + '</span>' : '');
+                var msgs = getElements().messages;
+                if (msgs) {
+                    msgs.appendChild(el);
+                    msgs.scrollTop = msgs.scrollHeight;
+                }
+            }
+        }
+    }
+
     if (msg.type === 'error') {
         appendMessage('error', '<i class="bi bi-exclamation-triangle"></i> ' + escapeHtml(msg.message || 'Unknown error'));
     }
+}
+
+function finalizeCurrentDiv() {
+    if (!streamState || !streamState.div) return;
+    var indicator = streamState.div.querySelector('.ai-streaming-indicator');
+    if (indicator) indicator.remove();
+    if (!streamState.div.innerHTML.trim()) streamState.div.remove();
+}
+
+function toolResultSummary(block, toolUse) {
+    if (toolUse && toolUse.input) {
+        if (toolUse.input.file_path) return toolUse.input.file_path;
+        if (toolUse.input.command) {
+            var cmd = toolUse.input.command;
+            return cmd.length > 60 ? cmd.substring(0, 60) + '…' : cmd;
+        }
+    }
+    if (block.is_error) return 'error';
+    return '';
 }
 
 function renderAssistant() {

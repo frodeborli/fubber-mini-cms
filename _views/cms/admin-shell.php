@@ -438,6 +438,15 @@
             font-weight: 600;
             color: #495057;
         }
+        .ai-msg-tool-error {
+            border-left-color: #f8d7da;
+        }
+        .tool-result-icon {
+            font-size: 0.7rem;
+        }
+        .ai-msg-tool-error .tool-result-icon {
+            color: #dc3545;
+        }
         .ai-msg-error {
             color: #dc3545;
             font-size: 0.82rem;
