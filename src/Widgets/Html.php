@@ -2,6 +2,8 @@
 
 namespace MiniCms\Widgets;
 
+use MiniCms\ContentStore;
+
 class Html extends AbstractWidget
 {
     protected static function type(): string
@@ -9,19 +11,14 @@ class Html extends AbstractWidget
         return 'html';
     }
 
+    protected function readValue(): mixed
+    {
+        $store = \mini\Mini::$mini->get(ContentStore::class);
+        return $store->readHtml($this->contextPath, $this->slug);
+    }
+
     protected function renderContent(): string
     {
         return $this->resolvedValue();
-    }
-
-    public function renderPreview(): string
-    {
-        $attrs = ' data-cms-type="html"'
-            . ' data-cms-file="' . \mini\h($this->file) . '"'
-            . ' data-cms-path="' . \mini\h($this->path) . '"'
-            . ' data-cms-pos="' . $this->pos . '"';
-
-        $tag = $this->tag ?: 'div';
-        return '<' . $tag . $attrs . '>' . $this->renderContent() . '</' . $tag . '>';
     }
 }

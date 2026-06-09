@@ -50,10 +50,9 @@ function updateImageField(fieldEl, url) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            file: fieldEl.dataset.file,
-            path: fieldEl.dataset.path,
+            context: fieldEl.dataset.context,
+            slug: fieldEl.dataset.slug,
             type: 'image',
-            pos: parseInt(fieldEl.dataset.pos),
             value: url
         })
     }).then(function(res) { if (res.ok) refreshPreview(); });
@@ -66,23 +65,37 @@ var editDirty = false;
 var editToggleEl = document.querySelector('.cms-edit-toggle');
 var editCancelEl = document.querySelector('.cms-edit-cancel');
 
+var topbarEditEl = document.getElementById('topbar-edit-actions');
+
+function collapseSidebar() {
+    if (window.innerWidth >= 992) return;
+    var body = document.body;
+    if (body.classList.contains('sidebar-open')) {
+        body.classList.remove('sidebar-open');
+        body.classList.add('sidebar-collapse');
+    }
+}
+
 function setEditUI(mode, isDirty) {
     editMode = mode;
     editDirty = isDirty;
     if (!editToggleEl) editToggleEl = document.querySelector('.cms-edit-toggle');
     if (!editCancelEl) editCancelEl = document.querySelector('.cms-edit-cancel');
+    if (!topbarEditEl) topbarEditEl = document.getElementById('topbar-edit-actions');
     if (mode) {
         if (editToggleEl) {
-            editToggleEl.innerHTML = '<i class="bi bi-check-lg"></i> Save';
+            editToggleEl.innerHTML = '<i class="nav-icon bi bi-check-lg"></i><p>Save</p>';
             editToggleEl.classList.add('text-success');
         }
-        if (editCancelEl) editCancelEl.style.display = '';
+        if (editCancelEl) editCancelEl.closest('.nav-item').style.display = '';
+        if (topbarEditEl) topbarEditEl.style.display = 'flex';
     } else {
         if (editToggleEl) {
-            editToggleEl.innerHTML = '<i class="bi bi-pencil-square"></i> Edit';
+            editToggleEl.innerHTML = '<i class="nav-icon bi bi-pencil-square"></i><p>Edit Page</p>';
             editToggleEl.classList.remove('text-success');
         }
-        if (editCancelEl) editCancelEl.style.display = 'none';
+        if (editCancelEl) editCancelEl.closest('.nav-item').style.display = 'none';
+        if (topbarEditEl) topbarEditEl.style.display = 'none';
     }
 }
 
@@ -98,6 +111,7 @@ function toggleEdit() {
     if (!editMode) {
         closeAll();
         setEditUI(true, false);
+        collapseSidebar();
         iw.postMessage({ type: 'cms-enter-edit' }, '*');
     } else {
         setEditUI(false, false);
@@ -133,7 +147,7 @@ window.addEventListener('message', function(e) {
             if (!result) return;
             iframe.contentWindow.postMessage({
                 type: 'cms-image-picked',
-                file: msg.file, path: msg.path, src: result.url, displaySrc: result.displayUrl
+                context: msg.context, slug: msg.slug, src: result.url, displaySrc: result.displayUrl
             }, '*');
         });
     }

@@ -13,6 +13,14 @@
     <style>
         html, body { height: 100%; overflow: hidden; }
         .app-wrapper { height: 100vh !important; min-height: 100vh !important; }
+        .sidebar-wrapper { display: flex; flex-direction: column; height: 100%; }
+        .sidebar-wrapper > nav { flex: 1; overflow-y: auto; }
+        .app-sidebar .cms-edit-toggle.text-success { color: #4ade80 !important; }
+        .app-sidebar .cms-edit-cancel { color: #f87171 !important; }
+        .app-header { display: none; }
+        @media (max-width: 991.98px) {
+            .app-header { display: flex; }
+        }
 
         .app-main {
             overflow: hidden !important;
@@ -613,37 +621,19 @@
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
     <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999;" id="cms-toasts"></div>
     <div class="app-wrapper">
-        <!-- Header -->
-        <nav class="app-header navbar navbar-expand bg-body">
+        <nav class="app-header navbar navbar-expand bg-body-secondary" data-bs-theme="dark">
             <div class="container-fluid">
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button"><i class="bi bi-list"></i></a>
                     </li>
-                    <li class="nav-item">
-                        <span class="nav-link text-muted"><?= \mini\h($currentPath) ?></span>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cms-edit-toggle" href="#" onclick="CMS.toggleEdit(); return false;" title="Edit page content"><i class="bi bi-pencil-square"></i> Edit</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link cms-edit-cancel text-danger" href="#" onclick="CMS.cancelEdit(); return false;" title="Discard changes" style="display:none"><i class="bi bi-x-lg"></i> Cancel</a>
-                    </li>
                 </ul>
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="#" onclick="CMS.refreshPreview(); return false;" title="Refresh preview"><i class="bi bi-arrow-clockwise"></i></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="<?= \mini\h($currentPath) ?>?_preview=1" target="_blank" title="Open in new tab"><i class="bi bi-box-arrow-up-right"></i></a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-danger" href="/login?logout=1" title="Logout"><i class="bi bi-box-arrow-right"></i></a>
-                    </li>
-                </ul>
+                <div class="ms-auto gap-2 py-1" id="topbar-edit-actions" style="display:none">
+                    <button class="btn btn-success btn-sm" onclick="CMS.toggleEdit()"><i class="bi bi-check-lg"></i> Save</button>
+                    <button class="btn btn-outline-light btn-sm" onclick="CMS.cancelEdit()"><i class="bi bi-x-lg"></i> Cancel</button>
+                </div>
             </div>
         </nav>
-
         <!-- Sidebar -->
         <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
             <div class="sidebar-brand">
@@ -654,14 +644,18 @@
             <div class="sidebar-wrapper">
                 <nav class="mt-2">
                     <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu">
-                        <?php foreach ($components as $groupName => $fields): $groupSlug = preg_replace('/[^a-z0-9]+/', '-', strtolower($groupName)); ?>
                         <li class="nav-item">
-                            <a href="#" class="nav-link" onclick="CMS.openDrawer('group-<?= \mini\h($groupSlug) ?>', 'Edit <?= \mini\h($groupName) ?>'); return false;">
+                            <a class="nav-link cms-edit-toggle" href="#" onclick="CMS.toggleEdit(); return false;">
                                 <i class="nav-icon bi bi-pencil-square"></i>
-                                <p>Edit <?= \mini\h($groupName) ?></p>
+                                <p>Edit Page</p>
                             </a>
                         </li>
-                        <?php endforeach; ?>
+                        <li class="nav-item" style="display:none">
+                            <a class="nav-link cms-edit-cancel text-danger" href="#" onclick="CMS.cancelEdit(); return false;">
+                                <i class="nav-icon bi bi-x-lg"></i>
+                                <p>Cancel Edit</p>
+                            </a>
+                        </li>
                         <li class="nav-item">
                             <a href="#" class="nav-link" onclick="CMS.openMediaLibrary(); return false;">
                                 <i class="nav-icon bi bi-images"></i>
@@ -736,6 +730,9 @@
                         </li>
                     </ul>
                 </nav>
+                <div style="padding: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
+                    <a href="/login?logout=1" class="btn btn-sm btn-outline-secondary w-100"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                </div>
             </div>
         </aside>
 
@@ -748,58 +745,13 @@
         </main>
     </div>
 
-    <!-- Drawer content templates (hidden, cloned into drawers) — one per component group -->
+    <?php /* Sidebar field editor drawers disabled — using inline editing only for now
     <?php foreach ($components as $groupName => $fields): $groupSlug = preg_replace('/[^a-z0-9]+/', '-', strtolower($groupName)); ?>
     <template id="tmpl-group-<?= \mini\h($groupSlug) ?>">
-        <?php foreach ($fields as $fieldName => $field): ?>
-        <div class="cms-field-wrap">
-            <div class="cms-field-label"><?= \mini\h($fieldName) ?></div>
-            <?php if ($field['type'] === 'text'): ?>
-            <input type="text" class="form-control form-control-sm cms-field"
-                data-file="<?= \mini\h($field['file']) ?>"
-                data-path="<?= \mini\h($field['path']) ?>"
-                data-type="text"
-                data-pos="<?= $field['pos'] ?>"
-                value="<?= \mini\h($field['value'] ?? $field['default']) ?>">
-            <?php elseif ($field['type'] === 'html'): ?>
-            <div class="cms-html-editor tiptap-editor"
-                contenteditable="true"
-                data-file="<?= \mini\h($field['file']) ?>"
-                data-path="<?= \mini\h($field['path']) ?>"
-                data-type="html"
-                data-pos="<?= $field['pos'] ?>"><?= $field['value'] ?? $field['default'] ?></div>
-            <?php elseif ($field['type'] === 'image'): ?>
-            <div class="cms-image-field"
-                data-file="<?= \mini\h($field['file']) ?>"
-                data-path="<?= \mini\h($field['path']) ?>"
-                data-type="image"
-                data-pos="<?= $field['pos'] ?>"
-                data-aspect="<?= \mini\h($field['aspect'] ?? '') ?>"
-                onclick="CMS.pickImage(this)">
-                <div class="cms-image-thumb">
-                    <?php $imgVal = $field['value'] ?? $field['default']; ?>
-                    <?php if ($imgVal): ?>
-                    <img src="<?= \mini\h($imgVal) ?>" alt="">
-                    <?php else: ?>
-                    <div class="cms-image-thumb-empty"><i class="bi bi-image" style="font-size:2rem;"></i><br>Click to choose image</div>
-                    <?php endif; ?>
-                </div>
-                <div class="cms-image-actions">
-                    <button class="btn btn-sm btn-outline-primary" type="button"><i class="bi bi-images"></i> Choose</button>
-                    <?php if (!empty($field['aspect'])): ?>
-                    <span class="cms-image-aspect-badge"><?= \mini\h($field['aspect']) ?></span>
-                    <?php endif; ?>
-                </div>
-            </div>
-            <?php endif; ?>
-        </div>
-        <?php endforeach; ?>
-        <div class="cms-editor-actions d-flex gap-2 mt-3 pt-3 border-top">
-            <button class="btn btn-sm btn-primary cms-save-btn" onclick="CMS.saveGroup(this)"><i class="bi bi-check-lg"></i> Save</button>
-            <button class="btn btn-sm btn-secondary cms-cancel-btn" onclick="CMS.cancelGroup(this)">Cancel</button>
-        </div>
+        ...
     </template>
     <?php endforeach; ?>
+    */ ?>
 
     <template id="tmpl-media-library">
         <div class="media-layout">

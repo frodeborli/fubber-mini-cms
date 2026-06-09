@@ -52,6 +52,9 @@ class Page extends AbstractPage
         $loggedIn = !empty($_SESSION['cms_user']);
         $isPreview = !empty($_GET['_preview']);
 
+        $uri = $_SERVER['REQUEST_URI'] ?? '/';
+        $urlPath = strtok($uri, '?');
+
         if (!$loggedIn || $isPreview) {
             $response = $this->handleRequest();
             if ($response !== null) {
@@ -60,28 +63,32 @@ class Page extends AbstractPage
                 }
                 return $response;
             }
+            $ctx = CmsContext::instance();
+            $ctx->setPageContext($urlPath);
             $vars = array_merge($this->vars, $this->routeVars, ['page' => $this]);
             $html = \mini\render($this->view, $vars);
+            $ctx->assertBalanced();
             return new HtmlResponse($html);
         }
 
-        $uri = $_SERVER['REQUEST_URI'] ?? '/';
-        $iframePath = strtok($uri, '?');
         $queryString = parse_url($uri, PHP_URL_QUERY) ?? '';
         parse_str($queryString, $query);
         $query['_preview'] = '1';
-        $iframeUrl = $iframePath . '?' . http_build_query($query);
+        $iframeUrl = $urlPath . '?' . http_build_query($query);
 
         $isFormSubmit = $_SERVER['REQUEST_METHOD'] !== 'GET';
 
         if ($isFormSubmit) {
             $components = [];
         } else {
+            $ctx = CmsContext::instance();
+            $ctx->setPageContext($urlPath);
             $vars = array_merge($this->vars, $this->routeVars, ['page' => $this]);
             $collector = ComponentCollector::instance();
             $collector->startCollecting();
             \mini\render($this->view, $vars);
             $components = $collector->stopCollecting();
+            $ctx->assertBalanced();
 
             foreach ($components as &$group) {
                 uasort($group, fn($a, $b) => $a['pos'] <=> $b['pos']);
@@ -92,7 +99,7 @@ class Page extends AbstractPage
         $shellVars = [
             'iframeUrl' => $isFormSubmit ? 'about:blank' : $iframeUrl,
             'components' => $components,
-            'currentPath' => $iframePath,
+            'currentPath' => $urlPath,
         ];
 
         if ($isFormSubmit) {

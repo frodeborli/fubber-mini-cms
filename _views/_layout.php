@@ -79,8 +79,8 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         var promises = [];
         document.querySelectorAll('[data-cms-type]').forEach(function(el) {
             var type = el.dataset.cmsType;
-            var file = el.dataset.cmsFile;
-            var path = el.dataset.cmsPath;
+            var context = el.dataset.cmsContext;
+            var slug = el.dataset.cmsSlug;
             var value;
             if (type === 'text') value = el.textContent;
             else if (type === 'html') value = cleanHtml(el.innerHTML);
@@ -90,7 +90,7 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
                 fetch('/admin/api/component/', {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({file: file, path: path, value: value})
+                    body: JSON.stringify({context: context, slug: slug, type: type, value: value})
                 })
             );
 
@@ -103,7 +103,7 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
                 fetch('/admin/api/component/', {
                     method: 'PUT',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({file: img.file, path: img.path, value: img.src})
+                    body: JSON.stringify({context: img.context, slug: img.slug, type: 'image', value: img.src})
                 })
             );
         });
@@ -233,9 +233,8 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
             e.preventDefault();
             window.parent.postMessage({
                 type: 'cms-pick-image',
-                file: el.dataset.cmsFile,
-                path: el.dataset.cmsPath,
-                pos: parseInt(el.dataset.cmsPos) || 0,
+                context: el.dataset.cmsContext,
+                slug: el.dataset.cmsSlug,
                 aspect: el.dataset.cmsAspect || ''
             }, '*');
         }
@@ -265,9 +264,8 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
             if (el.dataset.cmsType === 'image') {
                 window.parent.postMessage({
                     type: 'cms-pick-image',
-                    file: el.dataset.cmsFile,
-                    path: el.dataset.cmsPath,
-                    pos: parseInt(el.dataset.cmsPos) || 0,
+                    context: el.dataset.cmsContext,
+                    slug: el.dataset.cmsSlug,
                     aspect: el.dataset.cmsAspect || ''
                 }, '*');
             } else {
@@ -308,7 +306,7 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         else if (e.data.type === 'cms-cancel-edit') cancelEditMode();
         else if (e.data.type === 'cms-image-picked') {
             var el = document.querySelector(
-                '[data-cms-type="image"][data-cms-file="' + e.data.file + '"][data-cms-path="' + e.data.path + '"]'
+                '[data-cms-type="image"][data-cms-context="' + e.data.context + '"][data-cms-slug="' + e.data.slug + '"]'
             );
             if (el) {
                 var img = el.tagName === 'IMG' ? el : el.querySelector('img');
@@ -320,8 +318,8 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
                 img.src = e.data.displaySrc || e.data.src;
                 img.removeAttribute('srcset');
                 el.dataset.cmsSrc = e.data.src;
-                var key = e.data.file + '::' + e.data.path;
-                pendingImages[key] = {file: e.data.file, path: e.data.path, src: e.data.src};
+                var key = e.data.context + '::' + e.data.slug;
+                pendingImages[key] = {context: e.data.context, slug: e.data.slug, src: e.data.src};
                 markDirty();
             }
         }

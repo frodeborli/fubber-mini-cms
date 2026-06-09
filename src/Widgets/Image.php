@@ -3,6 +3,7 @@
 namespace MiniCms\Widgets;
 
 use MiniCms\ComponentCollector;
+use MiniCms\ContentStore;
 use MiniCms\ImageProcessor;
 
 class Image extends AbstractWidget
@@ -10,16 +11,22 @@ class Image extends AbstractWidget
     private string $alt;
     private string $aspect;
 
-    public function __construct(string $file, string $path, int $pos, string $default, string $tag, string $alt = '', string $aspect = '')
+    public function __construct(string $slug, string $label, int $pos, string $default, string $tagSelector, string $alt = '', string $aspect = '')
     {
         $this->alt = $alt;
         $this->aspect = $aspect;
-        parent::__construct($file, $path, $pos, $default, $tag);
+        parent::__construct($slug, $label, $pos, $default, $tagSelector);
     }
 
     protected static function type(): string
     {
         return 'image';
+    }
+
+    protected function readValue(): mixed
+    {
+        $store = \mini\Mini::$mini->get(ContentStore::class);
+        return $store->readWidget($this->contextPath, $this->slug);
     }
 
     protected function registerComponent(): void
@@ -29,7 +36,15 @@ class Image extends AbstractWidget
             $meta['aspect'] = $this->aspect;
         }
         ComponentCollector::instance()->register(
-            $this->file, $this->path, $this->pos, static::type(), $this->default, $this->value, $meta
+            $this->contextPath,
+            $this->contextLabel,
+            $this->slug,
+            $this->label,
+            $this->pos,
+            static::type(),
+            $this->default,
+            $this->value,
+            $meta,
         );
     }
 
@@ -100,18 +115,16 @@ class Image extends AbstractWidget
     public function renderPublic(): string
     {
         $content = $this->renderContent();
-        if ($content === '' || $this->tag === '') {
-            return $content;
-        }
-        return '<' . $this->tag . '>' . $content . '</' . $this->tag . '>';
+        if ($content === '' || $this->tagSelector === '') return $content;
+        return $this->openTag() . $content . $this->closeTag();
     }
 
     public function renderPreview(): string
     {
         $src = $this->resolvedValue();
         $cmsAttrs = ' data-cms-type="image"'
-            . ' data-cms-file="' . \mini\h($this->file) . '"'
-            . ' data-cms-path="' . \mini\h($this->path) . '"'
+            . ' data-cms-context="' . \mini\h($this->contextPath) . '"'
+            . ' data-cms-slug="' . \mini\h($this->slug) . '"'
             . ' data-cms-pos="' . $this->pos . '"'
             . ' data-cms-src="' . \mini\h($src) . '"';
         if ($this->aspect !== '') {
@@ -127,9 +140,7 @@ class Image extends AbstractWidget
         }
 
         $img = '<img' . $cmsAttrs . $imgAttrs . $this->aspectStyle() . '>';
-        if ($this->tag === '') {
-            return $img;
-        }
-        return '<' . $this->tag . '>' . $img . '</' . $this->tag . '>';
+        if ($this->tagSelector === '') return $img;
+        return $this->openTag() . $img . $this->closeTag();
     }
 }

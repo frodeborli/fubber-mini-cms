@@ -22,12 +22,18 @@ class ComponentController extends AbstractController
         }
 
         $data = json_decode((string)$request->getBody(), true);
-        if (!$data || empty($data['file']) || empty($data['path']) || !isset($data['value'])) {
-            throw new \mini\Exceptions\BadRequestException('Missing required fields: file, path, value');
+        if (!$data || empty($data['context']) || empty($data['slug']) || !isset($data['value'])) {
+            throw new \mini\Exceptions\BadRequestException('Missing required fields: context, slug, value');
         }
 
         $store = \mini\Mini::$mini->get(ContentStore::class);
-        $store->write($data['file'], $data['path'], $data['type'] ?? 'text', (int)($data['pos'] ?? 0), $data['value']);
+        $type = $data['type'] ?? 'text';
+
+        if ($type === 'html') {
+            $store->writeHtml($data['context'], $data['slug'], $data['value']);
+        } else {
+            $store->writeWidget($data['context'], $data['slug'], $data['value']);
+        }
 
         return $this->json(['ok' => true]);
     }

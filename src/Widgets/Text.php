@@ -2,6 +2,8 @@
 
 namespace MiniCms\Widgets;
 
+use MiniCms\ContentStore;
+
 class Text extends AbstractWidget
 {
     protected static function type(): string
@@ -9,25 +11,17 @@ class Text extends AbstractWidget
         return 'text';
     }
 
+    protected function readValue(): mixed
+    {
+        $store = \mini\Mini::$mini->get(ContentStore::class);
+        return $store->readWidget($this->contextPath, $this->slug);
+    }
+
     protected function renderContent(): string
     {
         return \mini\h($this->resolvedValue());
     }
 
-    public function renderPreview(): string
-    {
-        $attrs = ' data-cms-type="text"'
-            . ' data-cms-file="' . \mini\h($this->file) . '"'
-            . ' data-cms-path="' . \mini\h($this->path) . '"'
-            . ' data-cms-pos="' . $this->pos . '"';
-
-        $tag = $this->tag ?: 'span';
-        return '<' . $tag . $attrs . '>' . $this->renderContent() . '</' . $tag . '>';
-    }
-
-    /**
-     * Return the plain text value (for use in <title> etc. where no wrapper is wanted).
-     */
     public function plain(): string
     {
         return \mini\h($this->resolvedValue());

@@ -16,10 +16,9 @@ export function saveGroup(btn) {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                file: field.dataset.file,
-                path: field.dataset.path,
+                context: field.dataset.context,
+                slug: field.dataset.slug,
                 type: field.dataset.type,
-                pos: parseInt(field.dataset.pos),
                 value: field.value
             })
         }));
@@ -29,10 +28,9 @@ export function saveGroup(btn) {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                file: el.dataset.file,
-                path: el.dataset.path,
+                context: el.dataset.context,
+                slug: el.dataset.slug,
                 type: el.dataset.type,
-                pos: parseInt(el.dataset.pos),
                 value: el.innerHTML
             })
         }));
