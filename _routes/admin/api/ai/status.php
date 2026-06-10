@@ -8,7 +8,10 @@ if (empty($_SESSION['cms_user'])) {
 }
 
 $agent = \mini\Mini::$mini->get(AgentInterface::class);
+$available = !($agent instanceof \MiniCms\Ai\NullAgent);
 
 return new JsonResponse([
     'processing' => $agent->isProcessing(),
+    'available' => $available,
+    'agent' => $agent->getName(),
 ]);

@@ -46,14 +46,50 @@ function isPromptEmpty() {
 
 export function init(page) {
     currentPage = page || null;
-    loadHistory();
+    fetch('/admin/api/ai/status')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.available === false) {
+                showUnavailable();
+                return;
+            }
+            loadHistory();
+        })
+        .catch(function() {
+            loadHistory();
+        });
 }
 
 export function checkStatus() {
     return fetch('/admin/api/ai/status')
         .then(function(r) { return r.json(); })
-        .then(function(data) { return data.processing === true; })
+        .then(function(data) {
+            if (data.available === false) return false;
+            return data.processing === true;
+        })
         .catch(function() { return false; });
+}
+
+function showUnavailable() {
+    var els = getElements();
+    if (!els.messages) return;
+    els.messages.innerHTML =
+        '<div class="text-center py-5" style="max-width:420px;margin:0 auto;">' +
+            '<i class="bi bi-cpu" style="font-size:2.5rem;color:#aaa;"></i>' +
+            '<h5 class="mt-3" style="font-size:1rem;">No AI Assistant Available</h5>' +
+            '<p style="font-size:0.85rem;color:#666;line-height:1.6;">' +
+                'No supported coding agent was detected in this environment. ' +
+                'Install one of the following to enable the AI assistant:' +
+            '</p>' +
+            '<div style="text-align:left;background:#f8f9fa;border-radius:6px;padding:0.75rem 1rem;font-size:0.85rem;">' +
+                '<div style="margin-bottom:0.5rem;"><strong>Claude Code</strong><br>' +
+                    '<span style="color:#666;">Install via <code>npm install -g @anthropic-ai/claude-code</code></span></div>' +
+                '<div><strong>Gemini CLI</strong><br>' +
+                    '<span style="color:#666;">Install via <code>npm install -g @google/gemini-cli</code></span></div>' +
+            '</div>' +
+        '</div>';
+    if (els.prompt) els.prompt.contentEditable = 'false';
+    if (els.sendBtn) els.sendBtn.disabled = true;
 }
 
 export function resumeStream() {
@@ -334,22 +370,47 @@ function formatText(text) {
     return html;
 }
 
-function renderToolUse(block) {
-    var name = block.name || 'tool';
-    var summary = '';
-    if (block.input) {
-        if (block.input.file_path) {
-            summary = block.input.file_path;
-        } else if (block.input.command) {
-            summary = block.input.command.length > 60
-                ? block.input.command.substring(0, 60) + '…'
-                : block.input.command;
-        }
+function toolSummary(block) {
+    var input = block.input || {};
+
+    if (input.description) return input.description;
+
+    if (input.file_path) {
+        var parts = input.file_path.split('/');
+        return parts.length > 3
+            ? '…/' + parts.slice(-2).join('/')
+            : input.file_path;
     }
+
+    if (input.command) {
+        var cmd = input.command
+            .replace(/^export\s+PATH=[^;]*;\s*/g, '')
+            .replace(/^cd\s+\S+\s*&&\s*/g, '')
+            .trim();
+        return cmd.length > 80 ? cmd.substring(0, 80) + '…' : cmd;
+    }
+
+    return '';
+}
+
+function toolLabel(name) {
+    var labels = {
+        Bash: 'Terminal',
+        Read: 'Read',
+        Write: 'Write',
+        Edit: 'Edit',
+        Grep: 'Search'
+    };
+    return labels[name] || name || 'tool';
+}
+
+function renderToolUse(block) {
+    var label = toolLabel(block.name);
+    var summary = toolSummary(block);
     var idAttr = block.id ? ' data-tool-id="' + escapeHtml(block.id) + '"' : '';
     return '<div class="ai-msg-tool"' + idAttr + '>'
         + '<span class="tool-status-icon"><i class="bi bi-hourglass-split"></i></span> '
-        + '<span class="tool-name">' + escapeHtml(name) + '</span>'
+        + '<span class="tool-name">' + escapeHtml(label) + '</span>'
         + (summary ? ' <span style="color:#888">' + escapeHtml(summary) + '</span>' : '')
         + '</div>';
 }

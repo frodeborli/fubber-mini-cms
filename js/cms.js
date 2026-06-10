@@ -7,6 +7,7 @@ import * as media from './media.js';
 import * as crop from './crop.js';
 import * as ai from './ai.js';
 import * as data from './data.js';
+import * as settings from './settings.js';
 
 // -- Image picking (async, used by both sidebar editors and iframe edit mode) --
 
@@ -225,7 +226,8 @@ window.CMS = {
         createFolder: media.createFolder,
         deleteFile: media.deleteFile,
         copyUrl: media.copyUrl,
-        previewFile: media.previewFile
+        previewFile: media.previewFile,
+        saveMeta: media.saveMeta
     },
     crop: {
         start: crop.start,
@@ -248,5 +250,8 @@ window.CMS = {
         pick: data.pick,
         cancelPick: data.cancelPick,
         loadInline: data.loadInline
+    },
+    settings: {
+        changePassword: settings.changePassword
     }
 };

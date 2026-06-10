@@ -15,8 +15,21 @@
         .app-wrapper { height: 100vh !important; min-height: 100vh !important; }
         .sidebar-wrapper { display: flex; flex-direction: column; height: 100%; }
         .sidebar-wrapper > nav { flex: 1; overflow-y: auto; }
-        .app-sidebar .cms-edit-toggle.text-success { color: #4ade80 !important; }
-        .app-sidebar .cms-edit-cancel { color: #f87171 !important; }
+        .cms-sidebar {
+            background: #fefefe !important;
+            color: #333;
+        }
+        .cms-sidebar .nav-link { color: #444; }
+        .cms-sidebar .nav-link:hover { color: #111; background: rgba(0,0,0,.06); }
+        .cms-sidebar .nav-link.active { color: #1a56db; background: rgba(26,86,219,.08); }
+        .cms-sidebar .nav-header { color: #777; }
+        .cms-sidebar .sidebar-brand { border-bottom: 1px solid rgba(0,0,0,.08); padding: 0; height: 5.5rem; display: flex; align-items: center; }
+        .cms-sidebar .brand-link { display: block; padding: 0; }
+        .cms-sidebar .brand-logo { width: 100%; height: auto; display: block; }
+        .cms-sidebar .btn-outline-secondary { color: #555; border-color: #bbb; }
+        .cms-sidebar .btn-outline-secondary:hover { background: rgba(0,0,0,.06); color: #333; }
+        .app-sidebar .cms-edit-toggle.text-success { color: #16a34a !important; }
+        .app-sidebar .cms-edit-cancel { color: #dc2626 !important; }
         .app-header { display: none; }
         @media (max-width: 991.98px) {
             .app-header { display: flex; }
@@ -658,10 +671,10 @@
             </div>
         </nav>
         <!-- Sidebar -->
-        <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
+        <aside class="app-sidebar shadow cms-sidebar">
             <div class="sidebar-brand">
                 <a href="/" class="brand-link">
-                    <span class="brand-text fw-light">CMS</span>
+                    <img src="/admin/logo.png" alt="Mini CMS" class="brand-logo">
                 </a>
             </div>
             <div class="sidebar-wrapper">
@@ -753,8 +766,9 @@
                         </li>
                     </ul>
                 </nav>
-                <div style="padding: 0.5rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
-                    <a href="/login?logout=1" class="btn btn-sm btn-outline-secondary w-100"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                <div style="padding: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); margin-top: auto; display: flex; gap: 0.35rem;">
+                    <a href="#" onclick="CMS.openDrawer('settings', 'Settings'); return false;" class="btn btn-sm btn-outline-secondary" title="Settings"><i class="bi bi-gear"></i></a>
+                    <a href="/login?logout=1" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-box-arrow-right"></i> Logout</a>
                 </div>
             </div>
         </aside>
@@ -789,7 +803,7 @@
                     </button>
                 </div>
             </div>
-            <div class="media-files" id="media-files-panel">
+            <div class="media-files" id="media-files-panel" tabindex="0">
                 <div class="media-toolbar">
                     <div class="media-breadcrumb" id="media-breadcrumb">
                         <a href="#" onclick="CMS.media.navigateFolder(''); return false;">uploads</a>
@@ -847,6 +861,28 @@
         </div>
     </template>
 
+    <template id="tmpl-settings">
+        <div style="padding: 0.5rem 0;">
+            <h6 style="font-size: 0.85rem; font-weight: 600; margin-bottom: 1rem;">Change Password</h6>
+            <form id="settings-password-form" onsubmit="CMS.settings.changePassword(event)">
+                <div class="mb-3">
+                    <label class="form-label" style="font-size: 0.82rem;">Current password</label>
+                    <input type="password" name="current" class="form-control form-control-sm" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size: 0.82rem;">New password</label>
+                    <input type="password" name="new" class="form-control form-control-sm" required minlength="8">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" style="font-size: 0.82rem;">Confirm new password</label>
+                    <input type="password" name="confirm" class="form-control form-control-sm" required minlength="8">
+                </div>
+                <div id="settings-password-error" class="text-danger" style="font-size: 0.82rem; margin-bottom: 0.5rem; display: none;"></div>
+                <button type="submit" class="btn btn-sm btn-primary">Update Password</button>
+            </form>
+        </div>
+    </template>
+
 <?php if (!empty($replayData)): ?>
     <script>
     (function() {
@@ -871,10 +907,19 @@
 <?php endif; ?>
     <script src="/admin/dist/cms.min.js"></script>
     <script>
+    var siteIframe = document.getElementById('site-iframe');
+    if (siteIframe) {
+        siteIframe.addEventListener('load', function() {
+            try {
+                var t = siteIframe.contentDocument.title;
+                document.title = (t || 'Untitled') + ' — Mini CMS';
+            } catch(e) {}
+        });
+    }
     CMS.ai.checkStatus().then(function(processing) {
         if (!processing) return;
         CMS.openDrawer('ai-assistant', 'AI Assistant');
-        CMS.ai.init(<?= \mini\h(json_encode($currentPath)) ?>);
+        CMS.ai.init(<?= json_encode($currentPath) ?>);
         CMS.ai.resumeStream();
     });
     </script>

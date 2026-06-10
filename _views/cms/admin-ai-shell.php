@@ -225,6 +225,15 @@
             border-radius: 4px; cursor: pointer; margin: 0 0.3rem 0.3rem 0;
         }
         .ai-media-modal .media-folder-btn:hover { background: #e0e0e0; }
+
+        .cms-sidebar { background: #fefefe !important; color: #333; }
+        .cms-sidebar .nav-link { color: #444; }
+        .cms-sidebar .nav-link:hover { color: #111; background: rgba(0,0,0,.06); }
+        .cms-sidebar .nav-link.active { color: #1a56db; background: rgba(26,86,219,.08); }
+        .cms-sidebar .nav-header { color: #777; }
+        .cms-sidebar .sidebar-brand { border-bottom: 1px solid rgba(0,0,0,.08); padding: 0; height: 5.5rem; display: flex; align-items: center; }
+        .cms-sidebar .brand-link { display: block; padding: 0; }
+        .cms-sidebar .brand-logo { width: 100%; height: auto; display: block; }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
@@ -247,14 +256,14 @@
             </div>
         </nav>
 
-        <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
+        <aside class="app-sidebar shadow cms-sidebar">
             <div class="sidebar-brand">
                 <a href="/" class="brand-link">
-                    <span class="brand-text fw-light">CMS</span>
+                    <img src="/admin/logo.png" alt="Mini CMS" class="brand-logo">
                 </a>
             </div>
-            <div class="sidebar-wrapper">
-                <nav class="mt-2">
+            <div class="sidebar-wrapper" style="display: flex; flex-direction: column; height: 100%;">
+                <nav class="mt-2" style="flex: 1; overflow-y: auto;">
                     <ul class="nav sidebar-menu flex-column" data-lte-toggle="treeview" role="menu">
                         <li class="nav-header">PATHS</li>
                         <?php
@@ -305,6 +314,10 @@
                         </li>
                     </ul>
                 </nav>
+                <div style="padding: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); margin-top: auto; display: flex; gap: 0.35rem;">
+                    <a href="/admin/settings/" class="btn btn-sm btn-outline-secondary" title="Settings"><i class="bi bi-gear"></i></a>
+                    <a href="/login?logout=1" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                </div>
             </div>
         </aside>
 

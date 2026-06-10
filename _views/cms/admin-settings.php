@@ -4,36 +4,12 @@
     <script>if (window !== window.top) window.top.location.href = window.location.href;</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CMS - <?= \mini\h($entity->getPluralTitle()) ?></title>
+    <title>CMS - Settings</title>
     <link rel="stylesheet" href="/admin/vendor/source-sans-3/index.css">
     <link rel="stylesheet" href="/admin/vendor/overlayscrollbars/overlayscrollbars.min.css">
     <link rel="stylesheet" href="/admin/vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/admin/vendor/adminlte/adminlte.min.css">
-    <link rel="stylesheet" href="/admin/vendor/simple-datatables/simple-datatables.css">
     <style>
-        .app-content-header { padding: 0.75rem 1.25rem; }
-        .app-content-header h3 { margin: 0; font-size: 1.25rem; }
-        .datatable-wrapper .datatable-top,
-        .datatable-wrapper .datatable-bottom { padding: 0.75rem 1rem; }
-        .datatable-wrapper .datatable-search input { font-size: 0.875rem; }
-        .datatable-wrapper .datatable-container { border: none; }
-        .datatable-wrapper .datatable-table { margin-bottom: 0; }
-        tr[data-href] { cursor: pointer; }
-        tr[data-href]:hover td { background: #e8f0fe; }
-
-        .cms-picker-overlay { display: none; position: fixed; inset: 0; z-index: 1060; background: rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.2s; }
-        .cms-picker-overlay.open { display: flex !important; opacity: 1; justify-content: center; align-items: flex-start; padding-top: 5vh; }
-        .cms-picker-panel { background: #fff; border-radius: 8px; width: 480px; max-width: 95vw; max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.2); transform: translateY(-10px); transition: transform 0.2s; }
-        .cms-picker-overlay.open .cms-picker-panel { transform: translateY(0); }
-        .cms-picker-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; border-bottom: 1px solid #dee2e6; }
-        .cms-picker-body { flex: 1; overflow-y: auto; }
-        .cms-picker-body .list-group-item-action:hover { background: #e8f0fe; }
-        .cms-picker-footer { border-top: 1px solid #dee2e6; }
-
-        .cms-entity-field { display: flex; align-items: center; gap: 0.5rem; }
-        .cms-entity-field .cms-entity-display { flex: 1; padding: 0.375rem 0.75rem; border: 1px solid #dee2e6; border-radius: 0.375rem; min-height: 38px; background: #f8f9fa; }
-        .cms-entity-field .cms-entity-display:empty::after { content: 'None selected'; color: #6c757d; }
-
         .cms-sidebar { background: #fefefe !important; color: #333; }
         .cms-sidebar .nav-link { color: #444; }
         .cms-sidebar .nav-link:hover { color: #111; background: rgba(0,0,0,.06); }
@@ -42,11 +18,12 @@
         .cms-sidebar .sidebar-brand { border-bottom: 1px solid rgba(0,0,0,.08); padding: 0; height: 5.5rem; display: flex; align-items: center; }
         .cms-sidebar .brand-link { display: block; padding: 0; }
         .cms-sidebar .brand-logo { width: 100%; height: auto; display: block; }
+        .cms-sidebar .btn-outline-secondary { color: #555; border-color: #bbb; }
+        .cms-sidebar .btn-outline-secondary:hover { background: rgba(0,0,0,.06); color: #333; }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
     <div class="app-wrapper">
-        <!-- Header -->
         <nav class="app-header navbar navbar-expand bg-body">
             <div class="container-fluid">
                 <ul class="navbar-nav">
@@ -54,7 +31,7 @@
                         <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button"><i class="bi bi-list"></i></a>
                     </li>
                     <li class="nav-item">
-                        <span class="nav-link text-muted"><?= \mini\h($entity->getPluralTitle()) ?></span>
+                        <span class="nav-link fw-semibold"><i class="bi bi-gear"></i> Settings</span>
                     </li>
                 </ul>
                 <ul class="navbar-nav ms-auto">
@@ -65,7 +42,6 @@
             </div>
         </nav>
 
-        <!-- Sidebar -->
         <aside class="app-sidebar shadow cms-sidebar">
             <div class="sidebar-brand">
                 <a href="/" class="brand-link">
@@ -78,10 +54,9 @@
                         <li class="nav-header">PATHS</li>
                         <?php
                         $routeTree = \mini\Mini::$mini->get(\MiniCms\Content::class)->routeTree();
-                        $renderTree = function(array $nodes) use (&$renderTree, $currentPath) {
+                        $renderTree = function(array $nodes) use (&$renderTree) {
                             foreach ($nodes as $node):
                                 $hasChildren = !empty($node['children']);
-                                $hasPath = isset($node['path']);
                         ?>
                         <li class="nav-item">
                             <?php if ($hasChildren): ?>
@@ -109,7 +84,7 @@
                         <li class="nav-header">DATA</li>
                         <?php foreach ($cmsModels as $modelSlug => $modelEntity): ?>
                         <li class="nav-item">
-                            <a href="/admin/data/<?= \mini\h($modelSlug) ?>/" class="nav-link<?= $modelSlug === $slug ? ' active' : '' ?>">
+                            <a href="/admin/data/<?= \mini\h($modelSlug) ?>/" class="nav-link">
                                 <i class="nav-icon bi <?= \mini\h($modelEntity->getIcon()) ?>"></i>
                                 <p><?= \mini\h($modelEntity->getPluralTitle()) ?></p>
                             </a>
@@ -126,18 +101,51 @@
                     </ul>
                 </nav>
                 <div style="padding: 0.5rem; border-top: 1px solid rgba(0,0,0,0.1); margin-top: auto; display: flex; gap: 0.35rem;">
-                    <a href="/admin/settings/" class="btn btn-sm btn-outline-secondary" title="Settings"><i class="bi bi-gear"></i></a>
+                    <a href="/admin/settings/" class="btn btn-sm btn-outline-secondary active" title="Settings"><i class="bi bi-gear"></i></a>
                     <a href="/login?logout=1" class="btn btn-sm btn-outline-secondary flex-grow-1"><i class="bi bi-box-arrow-right"></i> Logout</a>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Content -->
         <main class="app-main">
-            <?= \mini\render($contentView, get_defined_vars()) ?>
+            <div class="app-content-header">
+                <h3><i class="bi bi-gear"></i> Settings</h3>
+            </div>
+            <div class="app-content">
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="card-title mb-0">Change Password</h5>
+                                </div>
+                                <div class="card-body">
+                                    <form id="settings-password-form" onsubmit="CMS.settings.changePassword(event)">
+                                        <div class="mb-3">
+                                            <label class="form-label">Current password</label>
+                                            <input type="password" name="current" class="form-control" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">New password</label>
+                                            <input type="password" name="new" class="form-control" required minlength="8">
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">Confirm new password</label>
+                                            <input type="password" name="confirm" class="form-control" required minlength="8">
+                                        </div>
+                                        <div id="settings-password-error" class="text-danger mb-2" style="display: none;"></div>
+                                        <button type="submit" class="btn btn-primary">Update Password</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index:9999;" id="cms-toasts"></div>
     <script src="/admin/dist/cms.min.js"></script>
 </body>
 </html>

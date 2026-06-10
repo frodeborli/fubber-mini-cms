@@ -5,6 +5,16 @@ namespace MiniCms\Ai;
 interface AgentInterface
 {
     /**
+     * Whether this agent backend is available in the current environment.
+     */
+    public static function isAvailable(): bool;
+
+    /**
+     * Human-readable name for this agent (e.g. "Claude Code").
+     */
+    public function getName(): string;
+
+    /**
      * Submit a prompt for processing.
      * The agent may launch a background process or begin immediately.
      */
@@ -36,4 +46,8 @@ interface AgentInterface
      * Whether an active session exists.
      */
     public function hasSession(): bool;
+
+    public function getLastPage(): ?string;
+
+    public function setLastPage(?string $page): void;
 }

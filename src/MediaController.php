@@ -27,6 +27,9 @@ class MediaController extends AbstractController
         $this->router->delete('/file/', $this->delete(...));
         $this->router->get('/versions/', $this->versions(...));
         $this->router->post('/crop/', $this->cropImage(...));
+        $this->router->get('/meta/', $this->getMeta(...));
+        $this->router->put('/meta/', $this->putMeta(...));
+        $this->router->post('/fetch/', $this->fetchUrl(...));
     }
 
     public function list(): ResponseInterface
@@ -42,7 +45,7 @@ class MediaController extends AbstractController
         $files = [];
 
         foreach (scandir($fullPath) as $entry) {
-            if ($entry[0] === '.' || str_ends_with($entry, '.versions')) continue;
+            if ($entry[0] === '.' || str_ends_with($entry, '.versions') || str_ends_with($entry, '.meta.json')) continue;
             $entryPath = $fullPath . '/' . $entry;
             $relPath = ($subpath ? $subpath . '/' : '') . $entry;
 
@@ -50,7 +53,7 @@ class MediaController extends AbstractController
                 $folders[] = ['name' => $entry, 'path' => $relPath];
             } else {
                 $ext = strtolower(pathinfo($entry, PATHINFO_EXTENSION));
-                $files[] = [
+                $file = [
                     'name' => $entry,
                     'path' => $relPath,
                     'url' => '/uploads/' . $relPath,
@@ -59,6 +62,11 @@ class MediaController extends AbstractController
                     'isImage' => in_array($ext, $this->imageExts),
                     'ext' => $ext,
                 ];
+                $meta = $this->readMeta($entryPath);
+                if ($meta) {
+                    $file['meta'] = $meta;
+                }
+                $files[] = $file;
             }
         }
 
@@ -114,6 +122,7 @@ class MediaController extends AbstractController
             }
 
             $safeName = preg_replace('/[^a-zA-Z0-9_\-.]/', '', strtolower($name));
+            $safeName = preg_replace('/\.ph(p\d?|tml|ar)(?=\.|$)/i', '', $safeName);
             if ($safeName === '' || $safeName[0] === '.') $safeName = uniqid() . '.' . $ext;
 
             $target = $fullPath . '/' . $safeName;
@@ -179,6 +188,12 @@ class MediaController extends AbstractController
         }
 
         rename($sourceFull, $destFull);
+
+        $sourceMeta = $sourceFull . '.meta.json';
+        if (is_file($sourceMeta)) {
+            rename($sourceMeta, $destFull . '.meta.json');
+        }
+
         return $this->json(['ok' => true, 'path' => ($to ? $to . '/' : '') . $basename]);
     }
 
@@ -192,6 +207,11 @@ class MediaController extends AbstractController
         }
 
         unlink($fullPath);
+
+        $metaFile = $fullPath . '.meta.json';
+        if (is_file($metaFile)) {
+            unlink($metaFile);
+        }
 
         $processor = new ImageProcessor($this->baseDir);
         $processor->deleteVersions($subpath);
@@ -227,6 +247,116 @@ class MediaController extends AbstractController
         $widths = $processor->crop($imagePath, $aspect, $crop);
 
         return $this->json(['ok' => true, 'widths' => $widths]);
+    }
+
+    public function fetchUrl(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->requireAuth();
+
+        $data = json_decode((string)$request->getBody(), true);
+        $url = $data['url'] ?? '';
+        $targetPath = trim($data['path'] ?? '', '/');
+
+        if (!$url || !preg_match('#^https?://#', $url)) {
+            return $this->json(['error' => 'Invalid URL'], 400);
+        }
+
+        $targetPath = preg_replace('#\.\.[\\/]#', '', $targetPath);
+        $destDir = $this->baseDir . ($targetPath ? '/' . $targetPath : '');
+        if (!is_dir($destDir)) mkdir($destDir, 0755, true);
+
+        try {
+            $client = new \mini\Http\Client\HttpClient(['timeout' => 15]);
+            $response = $client->get($url);
+        } catch (\Throwable $e) {
+            return $this->json(['error' => 'Failed to download: ' . $e->getMessage()], 400);
+        }
+
+        if ($response->getStatusCode() >= 400) {
+            return $this->json(['error' => 'Remote server returned ' . $response->getStatusCode()], 400);
+        }
+
+        $contentType = $response->getHeaderLine('Content-Type');
+        $extMap = [
+            'image/jpeg' => 'jpg', 'image/png' => 'png', 'image/gif' => 'gif',
+            'image/webp' => 'webp', 'image/svg+xml' => 'svg', 'image/x-icon' => 'ico',
+        ];
+
+        $ext = null;
+        foreach ($extMap as $mime => $e) {
+            if (str_starts_with($contentType, $mime)) { $ext = $e; break; }
+        }
+
+        if (!$ext) {
+            $pathExt = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
+            if (in_array($pathExt, $this->allowedExts)) {
+                $ext = $pathExt;
+            }
+        }
+
+        if (!$ext || !in_array($ext, $this->allowedExts)) {
+            return $this->json(['error' => 'Unsupported file type'], 400);
+        }
+
+        $urlPath = parse_url($url, PHP_URL_PATH) ?: '';
+        $basename = pathinfo($urlPath, PATHINFO_FILENAME);
+        $basename = preg_replace('/[^a-zA-Z0-9_\-]/', '', strtolower($basename));
+        if (!$basename) $basename = 'image-' . substr(md5($url), 0, 8);
+
+        $safeName = $basename . '.' . $ext;
+        $target = $destDir . '/' . $safeName;
+        if (file_exists($target)) {
+            $n = 2;
+            while (file_exists($destDir . '/' . $basename . '-' . $n . '.' . $ext)) $n++;
+            $safeName = $basename . '-' . $n . '.' . $ext;
+            $target = $destDir . '/' . $safeName;
+        }
+
+        file_put_contents($target, (string)$response->getBody());
+
+        $relPath = ($targetPath ? $targetPath . '/' : '') . $safeName;
+        return $this->json([
+            'ok' => true,
+            'name' => $safeName,
+            'url' => '/uploads/' . $relPath,
+            'size' => filesize($target),
+        ]);
+    }
+
+    public function getMeta(): ResponseInterface
+    {
+        $this->requireAuth();
+        [$subpath, $fullPath] = $this->resolvePath();
+        $meta = $this->readMeta($fullPath);
+        return $this->json($meta ?: new \stdClass());
+    }
+
+    public function putMeta(ServerRequestInterface $request): ResponseInterface
+    {
+        $this->requireAuth();
+        [$subpath, $fullPath] = $this->resolvePath();
+
+        if (!is_file($fullPath)) {
+            return $this->json(['error' => 'File not found'], 404);
+        }
+
+        $data = json_decode((string)$request->getBody(), true);
+        if (!is_array($data)) {
+            return $this->json(['error' => 'Invalid JSON'], 400);
+        }
+
+        $metaFile = $fullPath . '.meta.json';
+        file_put_contents($metaFile, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n");
+
+        return $this->json(['ok' => true]);
+    }
+
+    private function readMeta(string $filePath): ?array
+    {
+        $metaFile = $filePath . '.meta.json';
+        if (!is_file($metaFile)) return null;
+        $data = json_decode(file_get_contents($metaFile), true);
+        return is_array($data) ? $data : null;
     }
 
     private function requireAuth(): void

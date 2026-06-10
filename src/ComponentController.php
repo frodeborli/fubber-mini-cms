@@ -29,7 +29,7 @@ class ComponentController extends AbstractController
         $store = \mini\Mini::$mini->get(ContentStore::class);
         $type = $data['type'] ?? 'text';
 
-        if ($type === 'html') {
+        if ($type === 'html' || $type === 'text') {
             $store->writeHtml($data['context'], $data['slug'], $data['value']);
         } else {
             $store->writeWidget($data['context'], $data['slug'], $data['value']);

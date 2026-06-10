@@ -2,7 +2,7 @@
 
 // Shared auth gate for admin routes.
 // Include this at the top of every admin route file.
-// ADMIN_TOKEN must be set in site.ini [env] or .env.
+// ADMIN_TOKEN must be set in the .env file.
 
 (function () {
     $token = getenv('ADMIN_TOKEN');

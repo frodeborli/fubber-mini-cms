@@ -14,16 +14,16 @@ class Text extends AbstractWidget
     protected function readValue(): mixed
     {
         $store = \mini\Mini::$mini->get(ContentStore::class);
-        return $store->readWidget($this->contextPath, $this->slug);
+        return $store->readHtml($this->contextPath, $this->slug);
     }
 
     protected function renderContent(): string
     {
-        return \mini\h($this->resolvedValue());
+        return $this->resolvedValue();
     }
 
     public function plain(): string
     {
-        return \mini\h($this->resolvedValue());
+        return strip_tags($this->resolvedValue());
     }
 }

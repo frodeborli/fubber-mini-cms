@@ -97,7 +97,7 @@ The admin panel lives under `/admin/` and provides:
 - **Site settings** — edit site name and metadata
 - **AI assistant** — chat with an AI agent that can read and edit your site files
 
-Access the admin at `/admin/` after configuring `CMS_PASSWORD` in your `site.ini`.
+Access the admin at `/admin/` after setting `CMS_PASSWORD` in your `.env` file.
 
 ## AI assistant
 

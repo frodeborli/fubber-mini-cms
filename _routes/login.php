@@ -19,15 +19,25 @@ $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
-    $expectedPassword = getenv('CMS_PASSWORD');
+    $hashFile = \mini\Mini::$mini->root . '/.cms/password.hash';
+    $verified = false;
 
-    if (!$expectedPassword) {
-        $error = 'CMS_PASSWORD not configured. Set it in site.ini [env].';
-    } elseif (hash_equals($expectedPassword, $password)) {
+    if (is_file($hashFile)) {
+        $verified = password_verify($password, trim(file_get_contents($hashFile)));
+    } else {
+        $envPassword = getenv('CMS_PASSWORD');
+        if (!$envPassword) {
+            $error = 'CMS_PASSWORD not configured. Set it in your .env file.';
+        } elseif (hash_equals($envPassword, $password)) {
+            $verified = true;
+        }
+    }
+
+    if (!$error && $verified) {
         $_SESSION['cms_user'] = 'admin';
         $redirect = $_GET['redirect'] ?? '/';
         return new Response('', ['Location' => $redirect], 302);
-    } else {
+    } elseif (!$error) {
         $error = 'Invalid password.';
     }
 }

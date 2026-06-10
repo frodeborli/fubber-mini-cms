@@ -200,6 +200,18 @@ export function previewFile(f) {
     }
 
     html += '<div class="media-preview-url" title="Click to copy">' + escHtml(f.url) + '</div>';
+
+    if (f.isImage) {
+        var alt = (f.meta && f.meta.alt) || '';
+        html += '<div class="media-meta-form mt-3 text-start">';
+        html += '<label style="font-size:0.82rem;font-weight:600;display:block;margin-bottom:0.25rem;">Alt text</label>';
+        html += '<div class="d-flex gap-2">';
+        html += '<input type="text" id="media-meta-alt" class="form-control form-control-sm" value="' + escAttr(alt) + '" placeholder="Describe this image...">';
+        html += '<button class="btn btn-sm btn-primary" onclick="CMS.media.saveMeta(\'' + escAttr(f.path) + '\')">Save</button>';
+        html += '</div>';
+        html += '</div>';
+    }
+
     html += '<dl class="media-preview-meta mt-3 text-start">';
     html += '<dt>Filename</dt><dd>' + escHtml(f.name) + '</dd>';
     html += '<dt>Size</dt><dd>' + formatSize(f.size) + '</dd>';
@@ -249,6 +261,18 @@ export function deleteFile(path) {
     });
 }
 
+export function saveMeta(path) {
+    var altInput = document.getElementById('media-meta-alt');
+    if (!altInput) return;
+    fetch('/admin/api/media/meta/?path=' + encodeURIComponent(path), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alt: altInput.value })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.ok) toast('Metadata saved');
+    });
+}
+
 export function copyUrl(url) {
     var full = window.location.origin + url;
     navigator.clipboard.writeText(full).then(function() {
@@ -261,6 +285,35 @@ function isExternalDrag(e) {
         && e.dataTransfer.types.indexOf('text/plain') === -1;
 }
 
+function handleDroppedUrl(url) {
+    if (!url || !url.match(/^https?:\/\//)) return;
+    toast('Downloading image...');
+    fetch('/admin/api/media/fetch/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url, path: currentPath })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) {
+            toast(data.error, 'error');
+        } else {
+            load(currentPath);
+        }
+    }).catch(function() {
+        toast('Download failed', 'error');
+    });
+}
+
+function extractImageUrl(e) {
+    var html = e.dataTransfer.getData('text/html');
+    if (html) {
+        var m = html.match(/<img[^>]+src=["']([^"']+)["']/i);
+        if (m) return m[1];
+    }
+    var uri = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (uri && uri.match(/^https?:\/\/.*\.(jpg|jpeg|png|gif|webp|svg|ico)/i)) return uri;
+    return null;
+}
+
 function initDragDrop() {
     var panel = document.getElementById('media-files-panel');
     var dz = document.getElementById('media-dropzone');
@@ -268,7 +321,6 @@ function initDragDrop() {
     panel._dragInit = true;
 
     panel.addEventListener('dragenter', function(e) {
-        if (!isExternalDrag(e)) return;
         e.preventDefault();
         panel.classList.add('dragging');
     });
@@ -295,6 +347,26 @@ function initDragDrop() {
         panel.classList.remove('dragging');
         if (e.dataTransfer.files.length) {
             uploadFiles(e.dataTransfer.files);
+        } else {
+            var url = extractImageUrl(e);
+            if (url) handleDroppedUrl(url);
+        }
+    });
+
+    panel.addEventListener('paste', function(e) {
+        var files = [];
+        if (e.clipboardData && e.clipboardData.items) {
+            for (var i = 0; i < e.clipboardData.items.length; i++) {
+                var item = e.clipboardData.items[i];
+                if (item.type.indexOf('image/') === 0) {
+                    var file = item.getAsFile();
+                    if (file) files.push(file);
+                }
+            }
+        }
+        if (files.length) {
+            e.preventDefault();
+            uploadFiles(files);
         }
     });
 }

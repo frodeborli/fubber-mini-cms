@@ -63,16 +63,41 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
 
         document.querySelectorAll('[data-cms-type]').forEach(function(el) {
             var type = el.dataset.cmsType;
-            if (type === 'text') el.setAttribute('contenteditable', 'plaintext-only');
-            else if (type === 'html') el.setAttribute('contenteditable', 'true');
+            if (type === 'text' || type === 'html') el.setAttribute('contenteditable', 'true');
         });
 
         document.addEventListener('input', onContentInput);
+        document.addEventListener('keydown', onTextKeydown);
+        document.addEventListener('paste', onTextPaste, true);
         buildToolbar();
     }
 
     function onContentInput(e) {
         if (e.target.closest('[data-cms-type]')) markDirty();
+    }
+
+    function onTextKeydown(e) {
+        if (e.key === 'Enter' && e.target.closest('[data-cms-type="text"]')) {
+            e.preventDefault();
+        }
+    }
+
+    function onTextPaste(e) {
+        var textEl = e.target.closest('[data-cms-type="text"]');
+        if (!textEl) return;
+        e.preventDefault();
+        var html = e.clipboardData.getData('text/html');
+        if (html) {
+            var tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            tmp.querySelectorAll('h1,h2,h3,h4,h5,h6,ul,ol,li,blockquote,table,tr,td,th,hr,img,pre,div,p').forEach(function(el) {
+                while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+                el.remove();
+            });
+            document.execCommand('insertHTML', false, tmp.innerHTML);
+        } else {
+            document.execCommand('insertText', false, e.clipboardData.getData('text/plain'));
+        }
     }
 
     function exitEditMode() {
@@ -82,7 +107,7 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
             var context = el.dataset.cmsContext;
             var slug = el.dataset.cmsSlug;
             var value;
-            if (type === 'text') value = el.textContent;
+            if (type === 'text') value = cleanInlineHtml(el.innerHTML);
             else if (type === 'html') value = cleanHtml(el.innerHTML);
             else return;
 
@@ -112,9 +137,12 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         dirty = false;
         pendingImages = {};
         focusedHtml = null;
+        currentToolbarMode = null;
         document.body.classList.remove('cms-edit-mode');
         if (toolbar) toolbar.classList.remove('visible');
         document.removeEventListener('input', onContentInput);
+        document.removeEventListener('keydown', onTextKeydown);
+        document.removeEventListener('paste', onTextPaste, true);
 
         Promise.all(promises).then(function() {
             window.parent.postMessage({type: 'cms-edit-saved'}, '*');
@@ -126,9 +154,12 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         dirty = false;
         pendingImages = {};
         focusedHtml = null;
+        currentToolbarMode = null;
         document.body.classList.remove('cms-edit-mode');
         if (toolbar) toolbar.classList.remove('visible');
         document.removeEventListener('input', onContentInput);
+        document.removeEventListener('keydown', onTextKeydown);
+        document.removeEventListener('paste', onTextPaste, true);
         location.reload();
     }
 
@@ -139,7 +170,19 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         return tmp.innerHTML;
     }
 
-    var toolbarButtons = [
+    function cleanInlineHtml(html) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.querySelectorAll('.cms-toolbar').forEach(function(n) { n.remove(); });
+        var blocked = tmp.querySelectorAll('h1,h2,h3,h4,h5,h6,ul,ol,li,blockquote,table,tr,td,th,hr,img,pre,div,p');
+        blocked.forEach(function(el) {
+            while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+            el.remove();
+        });
+        return tmp.innerHTML;
+    }
+
+    var toolbarButtonsFull = [
         {cmd: 'bold',          label: '<b>B</b>'},
         {cmd: 'italic',        label: '<i>I</i>'},
         {cmd: 'underline',     label: '<u>U</u>'},
@@ -157,11 +200,32 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         {cmd: 'removeFormat', label: 'Clear'},
     ];
 
+    var toolbarButtonsInline = [
+        {cmd: 'bold',          label: '<b>B</b>'},
+        {cmd: 'italic',        label: '<i>I</i>'},
+        {cmd: 'underline',     label: '<u>U</u>'},
+        {sep: true},
+        {cmd: 'createLink',   label: '&#128279; Link', prompt: 'URL:'},
+        {cmd: 'unlink',       label: 'Unlink'},
+        {sep: true},
+        {cmd: 'removeFormat', label: 'Clear'},
+    ];
+
+    var currentToolbarMode = null;
+
     function buildToolbar() {
         if (toolbar) return;
         toolbar = document.createElement('div');
         toolbar.className = 'cms-toolbar';
-        toolbarButtons.forEach(function(b) {
+        document.body.insertBefore(toolbar, document.body.firstChild);
+    }
+
+    function setToolbarMode(mode) {
+        if (!toolbar || currentToolbarMode === mode) return;
+        currentToolbarMode = mode;
+        toolbar.innerHTML = '';
+        var buttons = mode === 'text' ? toolbarButtonsInline : toolbarButtonsFull;
+        buttons.forEach(function(b) {
             if (b.sep) {
                 var sep = document.createElement('span');
                 sep.className = 'sep';
@@ -184,7 +248,6 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
             if (b.value) btn.dataset.value = b.value;
             toolbar.appendChild(btn);
         });
-        document.body.insertBefore(toolbar, document.body.firstChild);
     }
 
     function updateToolbarState() {
@@ -203,9 +266,10 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
 
     document.addEventListener('focusin', function(e) {
         if (!editing) return;
-        var el = e.target.closest('[data-cms-type="html"]');
+        var el = e.target.closest('[data-cms-type="html"], [data-cms-type="text"]');
         if (el) {
             focusedHtml = el;
+            setToolbarMode(el.dataset.cmsType);
             if (toolbar) toolbar.classList.add('visible');
             updateToolbarState();
         }
@@ -215,7 +279,7 @@ $nav = $content->nav($path ?? strtok($_SERVER['REQUEST_URI'] ?? '/', '?'));
         if (!editing || !focusedHtml) return;
         setTimeout(function() {
             var active = document.activeElement;
-            if (active && (active.closest('[data-cms-type="html"]') || (toolbar && toolbar.contains(active)))) return;
+            if (active && (active.closest('[data-cms-type="html"], [data-cms-type="text"]') || (toolbar && toolbar.contains(active)))) return;
             focusedHtml = null;
             if (toolbar) toolbar.classList.remove('visible');
         }, 0);

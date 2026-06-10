@@ -48,10 +48,30 @@ class Image extends AbstractWidget
         );
     }
 
+    private function resolveAlt(): string
+    {
+        if ($this->alt !== '') return $this->alt;
+
+        $src = $this->resolvedValue();
+        if ($src === '') return '';
+
+        $relative = preg_replace('#^/uploads/#', '', $src);
+        if ($relative === $src) return '';
+
+        $uploadsDir = \mini\Mini::$mini->root . '/uploads';
+        $metaFile = $uploadsDir . '/' . $relative . '.meta.json';
+        if (!is_file($metaFile)) return '';
+
+        $meta = json_decode(file_get_contents($metaFile), true);
+        return $meta['alt'] ?? '';
+    }
+
     private function imgAttrs(): string
     {
         $src = $this->resolvedValue();
         if ($src === '') return '';
+
+        $alt = $this->resolveAlt();
 
         if ($this->aspect !== '') {
             $srcset = $this->buildSrcset($src);
@@ -59,11 +79,11 @@ class Image extends AbstractWidget
                 return ' src="' . \mini\h($srcset['fallback']) . '"'
                     . ' srcset="' . \mini\h($srcset['srcset']) . '"'
                     . ' sizes="(max-width: 640px) 100vw, 960px"'
-                    . ' alt="' . \mini\h($this->alt) . '"';
+                    . ' alt="' . \mini\h($alt) . '"';
             }
         }
 
-        return ' src="' . \mini\h($src) . '" alt="' . \mini\h($this->alt) . '"';
+        return ' src="' . \mini\h($src) . '" alt="' . \mini\h($alt) . '"';
     }
 
     private function aspectStyle(): string
@@ -82,7 +102,7 @@ class Image extends AbstractWidget
         if ($attrs !== '') return '<img' . $attrs . $this->aspectStyle() . '>';
 
         if ($this->aspect !== '') {
-            return '<img src="/admin/placeholder/' . \mini\h($this->aspect) . '" alt="' . \mini\h($this->alt) . '"' . $this->aspectStyle() . '>';
+            return '<img src="/admin/placeholder/' . \mini\h($this->aspect) . '" alt="' . \mini\h($this->resolveAlt()) . '"' . $this->aspectStyle() . '>';
         }
 
         return '';
@@ -136,7 +156,7 @@ class Image extends AbstractWidget
             $placeholderSrc = $this->aspect !== ''
                 ? '/admin/placeholder/' . \mini\h($this->aspect)
                 : '/admin/placeholder/1x1';
-            $imgAttrs = ' src="' . $placeholderSrc . '" alt="' . \mini\h($this->alt) . '"';
+            $imgAttrs = ' src="' . $placeholderSrc . '" alt="' . \mini\h($this->resolveAlt()) . '"';
         }
 
         $img = '<img' . $cmsAttrs . $imgAttrs . $this->aspectStyle() . '>';

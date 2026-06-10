@@ -17,6 +17,17 @@ class ClaudeCodeAgent implements AgentInterface
         $this->outputFile = $projectDir . '/.cms/ai-stream.ndjson';
     }
 
+    public static function isAvailable(): bool
+    {
+        $bin = getenv('CLAUDE_BIN') ?: (getenv('HOME') . '/.local/bin/claude');
+        return is_file($bin) && is_executable($bin);
+    }
+
+    public function getName(): string
+    {
+        return 'Claude Code';
+    }
+
     public function submitPrompt(string $prompt): void
     {
         $this->ensureDir();
@@ -247,7 +258,7 @@ class ClaudeCodeAgent implements AgentInterface
 
         if ($sessionId) {
             $state = $this->loadState();
-            $state['session_id'] = $sessionId;
+            $state['claude_session_id'] = $sessionId;
             $this->writeState($state);
         }
     }
@@ -255,15 +266,15 @@ class ClaudeCodeAgent implements AgentInterface
     private function getSessionId(): ?string
     {
         $state = $this->loadState();
-        return $state['session_id'] ?? null;
+        return $state['claude_session_id'] ?? $state['session_id'] ?? null;
     }
 
     private function saveState(?string $sessionId, ?string $lastPage): void
     {
-        $this->writeState([
-            'session_id' => $sessionId,
-            'last_page' => $lastPage,
-        ]);
+        $state = $this->loadState();
+        $state['claude_session_id'] = $sessionId;
+        $state['last_page'] = $lastPage;
+        $this->writeState($state);
     }
 
     private function loadState(): array
